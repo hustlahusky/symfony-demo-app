@@ -1,0 +1,70 @@
+#!/bin/sh
+set -e
+
+extDir="$(php -d 'display_errors=stderr' -r 'echo ini_get("extension_dir");')"
+cd "$extDir"
+
+usage() {
+    echo "usage: $0 [options] module-name [module-name ...]"
+    echo "   ie: $0 gd mysqli"
+    echo "       $0 pdo pdo_mysql"
+    echo
+    echo 'Possible values for module-name:'
+    find -maxdepth 1 \
+            -type f \
+            -name '*.so' \
+            -exec basename '{}' ';' \
+        | sort \
+        | xargs
+    echo
+    echo 'Some of the above modules are already compiled into PHP; please check'
+    echo 'the output of "php -i" to see which modules are already loaded.'
+}
+
+opts="$(getopt -o 'h?' --long 'help:' -- "$@" || { usage >&2 && false; })"
+eval set -- "$opts"
+
+while true; do
+    flag="$1"
+    shift
+    case "$flag" in
+        --help|-h|'-?') usage && exit 0 ;;
+        --) break ;;
+        *)
+            {
+                echo "error: unknown flag: $flag"
+                usage
+            } >&2
+            exit 1
+            ;;
+    esac
+done
+
+modules=
+for module; do
+    if [ -z "$module" ]; then
+        continue
+    fi
+    if ! [ -f "$module" ] && ! [ -f "$module.so" ]; then
+        echo >&2 "error: '$module' does not exist"
+        echo >&2
+        usage >&2
+        exit 1
+    fi
+    modules="$modules $module"
+done
+
+if [ -z "$modules" ]; then
+    usage >&2
+    exit 1
+fi
+
+for module in $modules; do
+    ext="$(basename "$module")"
+    ext="${ext%.*}"
+    ini="$PHP_INI_DIR/conf.d/docker-php-ext-$ext.ini"
+
+    if test -f "$ini"; then
+        mv "$ini" "$ini-disabled"
+    fi
+done

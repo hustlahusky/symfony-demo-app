@@ -1,0 +1,90 @@
+# Reference: https://docs.docker.com/compose/compose-file/compose-file-v3/
+
+version: '3.9'
+
+services:
+  php:
+    profiles:
+      - php-dev
+    restart: unless-stopped
+    image: ghcr.io/hustlahusky/symfony-demo-app/php-dev:latest
+    volumes:
+      - type: bind
+        source: .docker/volumes/php-socket
+        target: /var/run/php
+      - type: bind
+        source: .
+        target: /var/www/html
+      - type: volume
+        source: php-tmp
+        target: /tmp
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  php-debug:
+    profiles:
+      - php-debug
+    restart: unless-stopped
+    image: ghcr.io/hustlahusky/symfony-demo-app/php-dev:latest
+    volumes:
+      - type: bind
+        source: .docker/volumes/php-socket-debug
+        target: /var/run/php
+      - type: bind
+        source: .
+        target: /var/www/html
+      - type: volume
+        source: php-tmp
+        target: /tmp
+    environment:
+      # See https://xdebug.org/docs/all_settings for more
+      XDEBUG_CONFIG: 'log_level=0 idekey=${COMPOSE_PROJECT_NAME} client_host=${XDEBUG_CLIENT_HOST:-host.docker.internal}'
+      XDEBUG_TRIGGER: '${COMPOSE_PROJECT_NAME}'
+      XDEBUG_MODE: 'debug'
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  caddy:
+    profiles:
+      - caddy
+    restart: unless-stopped
+    image: caddy:2-alpine
+    volumes:
+      - type: bind
+        source: .docker/volumes/caddy/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+      - type: bind
+        source: public
+        target: /srv
+        read_only: true
+      - type: bind
+        source: .docker/volumes/php-socket
+        target: /var/run/php
+      - type: bind
+        source: .docker/volumes/php-socket-debug
+        target: /var/run/php-debug
+    environment:
+      CADDY_ROOT: /srv
+      FPM_ROOT: /var/www/html/public
+    depends_on:
+      php:
+        condition: service_healthy
+      php-debug:
+        condition: service_healthy
+        required: false
+
+  buggregator:
+    profiles:
+      - buggregator
+    restart: unless-stopped
+    image: ghcr.io/buggregator/server:latest
+
+  mailhog:
+    profiles:
+      - mailhog
+    restart: unless-stopped
+    image: mailhog/mailhog:latest
+
+volumes:
+  php-tmp:

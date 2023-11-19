@@ -1,0 +1,25 @@
+{
+	auto_https off
+}
+
+:80 {
+	@debug {
+		header X-Debug 1
+	}
+
+	root * {$CADDY_ROOT}
+
+	php_fastcgi @debug unix//var/run/php-debug/php-fpm.sock unix//var/run/php/php-fpm.sock {
+		root {$FPM_ROOT}
+		lb_policy first
+		lb_retries 1
+		fail_duration 10s
+	}
+
+	php_fastcgi unix//var/run/php/php-fpm.sock {
+		root {$FPM_ROOT}
+	}
+
+	encode zstd gzip
+	file_server
+}

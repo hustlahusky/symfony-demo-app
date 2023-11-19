@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    beStrictAboutCoversAnnotation="true"
+    beStrictAboutOutputDuringTests="true"
+    beStrictAboutTodoAnnotatedTests="true"
+    bootstrap="tests/bootstrap.php"
+    cacheResultFile="build/phpunit/test-results"
+    convertDeprecationsToExceptions="true"
+    executionOrder="depends,defects"
+    failOnRisky="true"
+    failOnWarning="true"
+    forceCoversAnnotation="true"
+    verbose="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+>
+    <testsuites>
+        <testsuite name="default">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage cacheDirectory="build/phpunit/code-coverage" processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+    </coverage>
+</phpunit>

@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+
+if [ "$APP_ENV" != 'prod' ] && [ -n "$XDEBUG_MODE" ] && [ "$XDEBUG_MODE" != 'off' ]; then
+    docker-php-ext-enable xdebug
+fi
+
+if [ "$APP_ENV" = 'prod' ]; then
+    [ -f "$PHP_INI_DIR/php.ini" ] && mv "$PHP_INI_DIR/php.ini" "$PHP_INI_DIR/php.ini~"
+    cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+else
+    [ -f "$PHP_INI_DIR/php.ini" ] && mv "$PHP_INI_DIR/php.ini" "$PHP_INI_DIR/php.ini~"
+    cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+fi
+
+if [ "$1" = 'php-fpm' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
+    if [ -f composer.json ] && [ "$APP_ENV" != 'prod' ]; then
+        flock -nx composer.json -c "composer install --prefer-dist --no-progress --no-interaction" || echo "composer.json is locked"
+    fi
+fi
+
+exec docker-php-entrypoint "$@"
